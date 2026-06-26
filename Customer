@@ -27,24 +27,20 @@ RED      = "#f85149"
 GREEN    = "#3fb950"
 YELLOW   = "#d29922"
 
+# ==================== หน้าต่างหลัก (หน้าล็อก - เต็มจอ) ====================
 root = tk.Tk()
 root.title("GameZone")
-
-# ===== โหมดเต็มจอ + ล็อก =====
 root.attributes("-fullscreen", True)
 root.attributes("-topmost", True)
 root.configure(bg=BG_DARK)
-
-# บล็อกแค่ปุ่มปิดหน้าต่าง (X) เท่านั้น
-# Ctrl+Alt+Delete และ Task Manager ยังใช้ได้ตามปกติ
 root.protocol("WM_DELETE_WINDOW", lambda: None)
 
 style = ttk.Style()
 style.theme_use("default")
 style.configure("bar.Horizontal.TProgressbar",
-    troughcolor=BG_CARD, background=GREEN, thickness=14)
+    troughcolor=BG_CARD, background=GREEN, thickness=10)
 
-# ==================== ฟังก์ชันปุ่มลับ ====================
+# ==================== ปุ่มลับ (คลิก 5 ครั้ง) ====================
 secret_clicks = [0]
 secret_timer  = [None]
 
@@ -59,7 +55,8 @@ def คลิกปุ่มลับ(event=None):
         secret_timer[0] = root.after(3000, lambda: secret_clicks.__setitem__(0, 0))
 
 def แสดงหน้าต่างรหัสลับ():
-    win = tk.Toplevel(root)
+    parent = timer_win if timer_win and timer_win.winfo_exists() else root
+    win = tk.Toplevel(parent)
     win.title("รหัสผู้ดูแล")
     win.configure(bg=BG_DARK)
     win.geometry("320x180")
@@ -79,6 +76,8 @@ def แสดงหน้าต่างรหัสลับ():
     def ตรวจรหัส(event=None):
         if e.get().strip().upper() == ADMIN_PASSWORD:
             win.destroy()
+            if timer_win and timer_win.winfo_exists():
+                timer_win.destroy()
             root.destroy()
         else:
             lbl.config(text="❌ รหัสไม่ถูกต้อง")
@@ -89,19 +88,8 @@ def แสดงหน้าต่างรหัสลับ():
         command=ตรวจรหัส).pack(pady=6)
     e.bind("<Return>", ตรวจรหัส)
 
-# ==================== ตัวแปรสถานะ ====================
-current = {"code": None, "session": None, "total_sec": 0}
-running = [False]
-
-# ==================== สร้าง UI ====================
-main = tk.Frame(root, bg=BG_DARK)
-main.place(relx=0, rely=0, relwidth=1, relheight=1)
-
-# ปุ่มลับ - คลิกที่หน้าจอ 5 ครั้งเร็วๆ ภายใน 3 วินาที
-main.bind("<Button-1>", คลิกปุ่มลับ)
-
-# ========== หน้าล็อก (Login) ==========
-frame_login = tk.Frame(main, bg=BG_DARK)
+# ==================== หน้าล็อก ====================
+frame_login = tk.Frame(root, bg=BG_DARK)
 frame_login.place(relx=0, rely=0, relwidth=1, relheight=1)
 
 tk.Label(frame_login, text="🎮", font=("Segoe UI", 60), bg=BG_DARK).pack(pady=(80, 4))
@@ -121,66 +109,57 @@ lbl_err = tk.Label(frame_login, text="", font=("Segoe UI", 13),
     bg=BG_DARK, fg=RED)
 lbl_err.pack(pady=10)
 
-# ========== หน้าเล่น (Play) ==========
-frame_play = tk.Frame(main, bg=BG_DARK)
+# ==================== หน้าต่างนาฬิกา (ลอยมุมจอ) ====================
+timer_win = None
+current = {"code": None, "session": None, "total_sec": 0}
+running = [False]
 
-lbl_welcome = tk.Label(frame_play, text="", font=("Segoe UI", 20, "bold"),
-    bg=BG_DARK, fg=GREEN)
-lbl_welcome.pack(pady=(50, 4))
+def สร้างหน้าต่างนาฬิกา():
+    global timer_win
+    timer_win = tk.Toplevel(root)
+    timer_win.title("⏱ เวลาเหลือ")
+    timer_win.geometry("280x130+20+20")
+    timer_win.attributes("-topmost", True)
+    timer_win.configure(bg=BG_DARK)
+    timer_win.resizable(False, False)
+    timer_win.protocol("WM_DELETE_WINDOW", lambda: None)
+    timer_win.overrideredirect(True)  # ไม่มี title bar
 
-lbl_machine = tk.Label(frame_play, text="", font=("Segoe UI", 14),
-    bg=BG_DARK, fg=TEXT_SUB)
-lbl_machine.pack()
+    # กรอบ
+    frame = tk.Frame(timer_win, bg=BG_CARD, padx=12, pady=8)
+    frame.pack(fill="both", expand=True, padx=2, pady=2)
 
-tk.Label(frame_play, text="เวลาคงเหลือ", font=("Segoe UI", 14),
-    bg=BG_DARK, fg=TEXT_SUB).pack(pady=(40, 4))
+    tk.Label(frame, text="⏱ เวลาคงเหลือ", font=("Segoe UI", 9),
+        bg=BG_CARD, fg=TEXT_SUB).pack()
 
-lbl_timer = tk.Label(frame_play, text="00:00:00", font=("Courier New", 80, "bold"),
-    bg=BG_DARK, fg=GREEN)
-lbl_timer.pack()
+    global lbl_mini_timer, lbl_mini_name, lbl_mini_status
+    lbl_mini_timer = tk.Label(frame, text="00:00:00",
+        font=("Courier New", 28, "bold"), bg=BG_CARD, fg=GREEN)
+    lbl_mini_timer.pack()
 
-lbl_total = tk.Label(frame_play, text="", font=("Segoe UI", 12),
-    bg=BG_DARK, fg=TEXT_SUB)
-lbl_total.pack(pady=4)
+    lbl_mini_name = tk.Label(frame, text="", font=("Segoe UI", 9),
+        bg=BG_CARD, fg=TEXT_SUB)
+    lbl_mini_name.pack()
 
-progress = ttk.Progressbar(frame_play, style="bar.Horizontal.TProgressbar",
-    length=500, maximum=100)
-progress.pack(pady=14)
+    lbl_mini_status = tk.Label(frame, text="", font=("Segoe UI", 8),
+        bg=BG_CARD, fg=GREEN)
+    lbl_mini_status.pack()
 
-lbl_status = tk.Label(frame_play, text="", font=("Segoe UI", 14, "bold"),
-    bg=BG_DARK, fg=TEXT)
-lbl_status.pack(pady=6)
+    # ลากได้
+    def เริ่มลาก(e):
+        timer_win._drag_x = e.x
+        timer_win._drag_y = e.y
+    def ลาก(e):
+        x = timer_win.winfo_x() + e.x - timer_win._drag_x
+        y = timer_win.winfo_y() + e.y - timer_win._drag_y
+        timer_win.geometry(f"+{x}+{y}")
 
-info_card = tk.Frame(frame_play, bg=BG_CARD, padx=24, pady=16)
-info_card.pack(padx=80, pady=10, fill="x")
+    frame.bind("<Button-1>", เริ่มลาก)
+    frame.bind("<B1-Motion>", ลาก)
 
-lbl_info_name  = tk.Label(info_card, text="", font=("Segoe UI", 13), bg=BG_CARD, fg=TEXT, anchor="w")
-lbl_info_phone = tk.Label(info_card, text="", font=("Segoe UI", 12), bg=BG_CARD, fg=TEXT_SUB, anchor="w")
-lbl_info_price = tk.Label(info_card, text="", font=("Segoe UI", 12), bg=BG_CARD, fg=ACCENT, anchor="w")
-lbl_info_start = tk.Label(info_card, text="", font=("Segoe UI", 11), bg=BG_CARD, fg=TEXT_SUB, anchor="w")
-for l in [lbl_info_name, lbl_info_phone, lbl_info_price, lbl_info_start]:
-    l.pack(fill="x", pady=2)
-
-# ==================== ฟังก์ชันหมดเวลา ====================
-def หมดเวลา():
-    running[0] = False
-    s = current["session"]
-    if s:
-        s["active"] = False
-        all_s = โหลด()
-        all_s[current["code"]] = s
-        บันทึก(all_s)
-    # กลับหน้าล็อก
-    root.after(0, กลับหน้าล็อก)
-
-def กลับหน้าล็อก():
-    frame_play.place_forget()
-    frame_login.place(relx=0, rely=0, relwidth=1, relheight=1)
-    e_code.delete(0, "end")
-    lbl_err.config(text="⛔ หมดเวลาแล้ว กรุณาติดต่อพนักงานเพื่อซื้อเวลาเพิ่ม", fg=RED)
-    e_code.focus()
-    current["code"] = None
-    current["session"] = None
+    # คลิก 5 ครั้งเพื่อเปิดรหัสลับ
+    frame.bind("<Double-Button-1>", คลิกปุ่มลับ)
+    timer_win.bind("<Button-1>", คลิกปุ่มลับ)
 
 # ==================== นับถอยหลัง ====================
 def นับถอยหลัง():
@@ -191,12 +170,14 @@ def นับถอยหลัง():
         elapsed   = time.time() - s["เริ่ม"]
         remaining = s["นาที"] * 60 - elapsed
         total     = current["total_sec"]
-        pct       = max(0, (remaining / total) * 100)
 
         if remaining <= 0:
-            root.after(0, lambda: lbl_timer.config(text="00:00:00", fg=RED))
-            root.after(0, lambda: progress.config(value=0))
-            root.after(500, หมดเวลา)
+            running[0] = False
+            s["active"] = False
+            all_s = โหลด()
+            all_s[current["code"]] = s
+            บันทึก(all_s)
+            root.after(0, หมดเวลา)
             break
 
         h, rem = divmod(int(remaining), 3600)
@@ -205,20 +186,37 @@ def นับถอยหลัง():
 
         if remaining < 300:
             color = RED
-            style.configure("bar.Horizontal.TProgressbar", background=RED)
-            root.after(0, lambda: lbl_status.config(text="⚠️ เหลือเวลาไม่ถึง 5 นาที!", fg=RED))
+            status = "⚠️ เหลือน้อยกว่า 5 นาที!"
         elif remaining < 600:
             color = YELLOW
-            style.configure("bar.Horizontal.TProgressbar", background=YELLOW)
-            root.after(0, lambda: lbl_status.config(text="⏰ เหลือเวลาน้อยกว่า 10 นาที", fg=YELLOW))
+            status = "⏰ เหลือน้อยกว่า 10 นาที"
         else:
             color = GREEN
-            style.configure("bar.Horizontal.TProgressbar", background=GREEN)
-            root.after(0, lambda: lbl_status.config(text="✅ กำลังใช้งาน", fg=GREEN))
+            status = "✅ กำลังใช้งาน"
 
-        root.after(0, lambda t=ts, c=color: lbl_timer.config(text=t, fg=c))
-        root.after(0, lambda p=pct: progress.config(value=p))
+        def อัพเดท(t=ts, c=color, st=status):
+            if timer_win and timer_win.winfo_exists():
+                lbl_mini_timer.config(text=t, fg=c)
+                lbl_mini_status.config(text=st, fg=c)
+
+        root.after(0, อัพเดท)
         time.sleep(1)
+
+def หมดเวลา():
+    # ปิดหน้าต่างนาฬิกา
+    global timer_win
+    if timer_win and timer_win.winfo_exists():
+        timer_win.destroy()
+    timer_win = None
+    # กลับหน้าล็อกเต็มจอ
+    root.deiconify()
+    root.attributes("-fullscreen", True)
+    root.attributes("-topmost", True)
+    e_code.delete(0, "end")
+    lbl_err.config(text="⛔ หมดเวลาแล้ว กรุณาติดต่อพนักงาน", fg=RED)
+    e_code.focus()
+    current["code"] = None
+    current["session"] = None
 
 # ==================== เริ่มเล่น ====================
 def เริ่มเล่น(event=None):
@@ -253,19 +251,14 @@ def เริ่มเล่น(event=None):
     h, m = divmod(s["นาที"], 60)
     t = f"{h}ชม {m}น" if h else f"{m}น"
 
-    lbl_welcome.config(text=f"ยินดีต้อนรับ {s['ชื่อ']} 🎮")
-    lbl_machine.config(text=f"เครื่อง #{s['เครื่อง']}")
-    lbl_info_name.config(text=f"👤 ชื่อ: {s['ชื่อ']}")
-    lbl_info_phone.config(text=f"📞 เบอร์: {s.get('เบอร์', '-')}")
-    lbl_info_price.config(text=f"💰 ราคา: {s['ราคา']} บาท  |  เวลา: {t}")
-    lbl_info_start.config(text=f"🕐 เริ่มเล่น: {datetime.now().strftime('%H:%M:%S')}")
-    lbl_total.config(text=f"เวลาเช่าทั้งหมด {t}")
-    lbl_timer.config(fg=GREEN)
-    lbl_status.config(text="✅ กำลังใช้งาน", fg=GREEN)
-    progress.config(value=100)
+    # ย่อหน้าล็อกลง taskbar แล้วให้ใช้คอมได้
+    root.attributes("-fullscreen", False)
+    root.attributes("-topmost", False)
+    root.iconify()
 
-    frame_login.place_forget()
-    frame_play.place(relx=0, rely=0, relwidth=1, relheight=1)
+    # สร้างหน้าต่างนาฬิกาเล็กๆ ลอยมุมจอ
+    สร้างหน้าต่างนาฬิกา()
+    lbl_mini_name.config(text=f"{s['ชื่อ']}  |  เครื่อง #{s['เครื่อง']}  |  {t}")
 
     running[0] = True
     threading.Thread(target=นับถอยหลัง, daemon=True).start()
@@ -274,5 +267,6 @@ tk.Button(frame_login, text="🎮 เริ่มเล่น", font=("Segoe UI"
     bg=ACCENT, fg=BG_DARK, relief="flat", padx=36, pady=13,
     cursor="hand2", command=เริ่มเล่น).pack(pady=4)
 e_code.bind("<Return>", เริ่มเล่น)
+frame_login.bind("<Button-1>", คลิกปุ่มลับ)
 
 root.mainloop()
