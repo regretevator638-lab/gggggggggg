@@ -52,11 +52,11 @@ def คลิกปุ่มลับ(event=None):
     secret_clicks[0] += 1
     if secret_timer[0]:
         root.after_cancel(secret_timer[0])
-    if secret_clicks[0] >= 3:
+    if secret_clicks[0] >= 5:
         secret_clicks[0] = 0
         แสดงหน้าต่างรหัสลับ()
     else:
-        secret_timer[0] = root.after(1500, lambda: secret_clicks.__setitem__(0, 0))
+        secret_timer[0] = root.after(3000, lambda: secret_clicks.__setitem__(0, 0))
 
 def แสดงหน้าต่างรหัสลับ():
     win = tk.Toplevel(root)
@@ -97,11 +97,10 @@ running = [False]
 main = tk.Frame(root, bg=BG_DARK)
 main.place(relx=0, rely=0, relwidth=1, relheight=1)
 
-# ปุ่มลับ มุมล่างขวา (จุดเล็กๆ คลิก 3 ครั้งเร็วๆ)
-btn_secret = tk.Label(main, text="●", font=("Segoe UI", 8),
-    bg=BG_DARK, fg="#2a2a3a", cursor="arrow")
-btn_secret.place(relx=1.0, rely=1.0, anchor="se", x=-8, y=-8)
-btn_secret.bind("<Button-1>", คลิกปุ่มลับ)
+# ปุ่มลับ - คลิกที่หน้าจอ 5 ครั้งเร็วๆ ภายใน 3 วินาที
+main.bind("<Button-1>", คลิกปุ่มลับ)
+frame_login.bind("<Button-1>", คลิกปุ่มลับ)
+frame_play.bind("<Button-1>", คลิกปุ่มลับ)
 
 # ========== หน้าล็อก (Login) ==========
 frame_login = tk.Frame(main, bg=BG_DARK)
