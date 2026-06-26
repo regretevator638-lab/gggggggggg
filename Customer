@@ -1,9 +1,10 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 import time, json, os, threading
 from datetime import datetime
 
 DATA_FILE = "sessions.json"
+ADMIN_PASSWORD = "ADMIN99"  # รหัสลับสำหรับปิดโปรแกรม (เปลี่ยนได้)
 
 def โหลด():
     if os.path.exists(DATA_FILE):
@@ -27,177 +28,230 @@ GREEN    = "#3fb950"
 YELLOW   = "#d29922"
 
 root = tk.Tk()
-root.title("🖥️ ลูกค้า - ใส่รหัสเพื่อเล่น")
-root.geometry("500x620")
+root.title("GameZone")
+
+# ===== โหมดเต็มจอ + ล็อก =====
+root.attributes("-fullscreen", True)
+root.attributes("-topmost", True)
 root.configure(bg=BG_DARK)
-root.resizable(False, False)
 
-# ==================== หน้าใส่รหัส ====================
-frame_login = tk.Frame(root, bg=BG_DARK)
-frame_login.pack(fill="both", expand=True)
+# บล็อก Alt+F4
+root.protocol("WM_DELETE_WINDOW", lambda: None)
+# บล็อก Alt+Tab, Windows key, Escape
+for key in ["<Alt-F4>", "<Alt-Tab>", "<Super_L>", "<Super_R>", "<Escape>"]:
+    root.bind(key, lambda e: "break")
 
-tk.Label(frame_login, text="🎮", font=("Segoe UI", 48), bg=BG_DARK).pack(pady=(50, 4))
-tk.Label(frame_login, text="GameZone", font=("Segoe UI", 28, "bold"),
-    bg=BG_DARK, fg=ACCENT).pack()
-tk.Label(frame_login, text="ใส่รหัสเพื่อเริ่มเล่น",
-    font=("Segoe UI", 13), bg=BG_DARK, fg=TEXT_SUB).pack(pady=(6, 30))
-
-e_code = tk.Entry(frame_login, font=("Courier New", 30, "bold"),
-    bg=BG_FIELD, fg=ACCENT, insertbackground=ACCENT,
-    relief="flat", width=10, justify="center",
-    highlightthickness=2, highlightcolor=ACCENT, highlightbackground=BG_FIELD)
-e_code.pack(ipady=12)
-e_code.focus()
-
-lbl_err = tk.Label(frame_login, text="", font=("Segoe UI", 11),
-    bg=BG_DARK, fg=RED)
-lbl_err.pack(pady=8)
-
-# ==================== หน้าเล่น ====================
-frame_play = tk.Frame(root, bg=BG_DARK)
-
-lbl_welcome = tk.Label(frame_play, text="", font=("Segoe UI", 16, "bold"),
-    bg=BG_DARK, fg=GREEN)
-lbl_welcome.pack(pady=(30, 4))
-
-lbl_machine = tk.Label(frame_play, text="", font=("Segoe UI", 13),
-    bg=BG_DARK, fg=TEXT_SUB)
-lbl_machine.pack()
-
-tk.Label(frame_play, text="เวลาคงเหลือ", font=("Segoe UI", 12),
-    bg=BG_DARK, fg=TEXT_SUB).pack(pady=(30, 4))
-
-lbl_timer = tk.Label(frame_play, text="00:00:00", font=("Courier New", 64, "bold"),
-    bg=BG_DARK, fg=GREEN)
-lbl_timer.pack()
-
-lbl_total = tk.Label(frame_play, text="", font=("Segoe UI", 11),
-    bg=BG_DARK, fg=TEXT_SUB)
-lbl_total.pack(pady=4)
-
-# Progress bar
 style = ttk.Style()
 style.theme_use("default")
-style.configure("green.Horizontal.TProgressbar", troughcolor=BG_CARD,
-    background=GREEN, thickness=12)
-progress = ttk.Progressbar(frame_play, style="green.Horizontal.TProgressbar",
-    length=340, maximum=100)
-progress.pack(pady=12)
+style.configure("bar.Horizontal.TProgressbar",
+    troughcolor=BG_CARD, background=GREEN, thickness=14)
 
-lbl_status = tk.Label(frame_play, text="", font=("Segoe UI", 12, "bold"),
-    bg=BG_DARK, fg=TEXT)
-lbl_status.pack(pady=6)
+# ==================== ฟังก์ชันปุ่มลับ ====================
+secret_clicks = [0]
+secret_timer  = [None]
 
-# กล่องข้อมูลลูกค้า
-info_card = tk.Frame(frame_play, bg=BG_CARD, padx=20, pady=14)
-info_card.pack(padx=40, pady=10, fill="x")
+def คลิกปุ่มลับ(event=None):
+    secret_clicks[0] += 1
+    if secret_timer[0]:
+        root.after_cancel(secret_timer[0])
+    if secret_clicks[0] >= 3:
+        secret_clicks[0] = 0
+        แสดงหน้าต่างรหัสลับ()
+    else:
+        secret_timer[0] = root.after(1500, lambda: secret_clicks.__setitem__(0, 0))
 
-lbl_info_name  = tk.Label(info_card, text="", font=("Segoe UI", 11), bg=BG_CARD, fg=TEXT, anchor="w")
-lbl_info_phone = tk.Label(info_card, text="", font=("Segoe UI", 11), bg=BG_CARD, fg=TEXT_SUB, anchor="w")
-lbl_info_price = tk.Label(info_card, text="", font=("Segoe UI", 11), bg=BG_CARD, fg=ACCENT, anchor="w")
-lbl_info_start = tk.Label(info_card, text="", font=("Segoe UI", 10), bg=BG_CARD, fg=TEXT_SUB, anchor="w")
-for l in [lbl_info_name, lbl_info_phone, lbl_info_price, lbl_info_start]:
-    l.pack(fill="x", pady=1)
-
-# ปุ่มใบเสร็จ
-def แสดงใบเสร็จ(code, s):
-    h, m = divmod(s["นาที"], 60)
-    t = f"{h}ชม {m}น" if h else f"{m}น"
-    receipt = f"""
-╔══════════════════════════════╗
-║       🎮 ร้านเกม GameZone      ║
-╠══════════════════════════════╣
-║ วันที่    : {s['สร้างเมื่อ']:<18} ║
-║ ชื่อ      : {s['ชื่อ']:<18} ║
-║ เบอร์     : {s.get('เบอร์','-'):<18} ║
-║ เครื่อง   : เครื่อง {s['เครื่อง']:<13} ║
-║ เวลาเช่า  : {t:<18} ║
-║ รหัส      : {code:<18} ║
-║ ราคา      : {s['ราคา']} บาท{'':<13} ║
-╠══════════════════════════════╣
-║     ขอบคุณที่ใช้บริการครับ     ║
-╚══════════════════════════════╝
-"""
+def แสดงหน้าต่างรหัสลับ():
     win = tk.Toplevel(root)
-    win.title("ใบเสร็จ")
+    win.title("รหัสผู้ดูแล")
     win.configure(bg=BG_DARK)
-    win.geometry("360x340")
-    tk.Label(win, text=receipt, font=("Courier New", 10), bg=BG_DARK,
-        fg=ACCENT, justify="left").pack(padx=10, pady=10)
+    win.geometry("320x180")
+    win.attributes("-topmost", True)
+    win.grab_set()
 
-btn_receipt = tk.Button(frame_play, text="🧾 ดูใบเสร็จ", font=("Segoe UI", 11),
-    bg=BG_FIELD, fg=ACCENT, relief="flat", padx=16, pady=7, cursor="hand2")
-btn_receipt.pack(pady=4)
+    tk.Label(win, text="ใส่รหัสผู้ดูแลระบบ", font=("Segoe UI", 13, "bold"),
+        bg=BG_DARK, fg=ACCENT).pack(pady=(20, 8))
+    e = tk.Entry(win, font=("Courier New", 18, "bold"), bg=BG_FIELD, fg=ACCENT,
+        show="*", justify="center", relief="flat",
+        highlightthickness=1, highlightcolor=ACCENT, highlightbackground=BG_FIELD)
+    e.pack(ipady=8, padx=30, fill="x")
+    e.focus()
+    lbl = tk.Label(win, text="", font=("Segoe UI", 10), bg=BG_DARK, fg=RED)
+    lbl.pack(pady=4)
 
-# ==================== ตัวแปร ====================
+    def ตรวจรหัส(event=None):
+        if e.get().strip().upper() == ADMIN_PASSWORD:
+            win.destroy()
+            root.destroy()
+        else:
+            lbl.config(text="❌ รหัสไม่ถูกต้อง")
+            e.delete(0, "end")
+
+    tk.Button(win, text="ยืนยัน", font=("Segoe UI", 11, "bold"),
+        bg=ACCENT2, fg="white", relief="flat", padx=16, pady=6,
+        command=ตรวจรหัส).pack(pady=6)
+    e.bind("<Return>", ตรวจรหัส)
+
+# ==================== ตัวแปรสถานะ ====================
 current = {"code": None, "session": None, "total_sec": 0}
 running = [False]
 
+# ==================== สร้าง UI ====================
+main = tk.Frame(root, bg=BG_DARK)
+main.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+# ปุ่มล่องหน มุมบนซ้าย (คลิก 3 ครั้งเร็วๆ)
+btn_secret = tk.Label(main, text="", bg=BG_DARK, width=3, height=1, cursor="arrow")
+btn_secret.place(x=0, y=0)
+btn_secret.bind("<Button-1>", คลิกปุ่มลับ)
+
+# ========== หน้าล็อก (Login) ==========
+frame_login = tk.Frame(main, bg=BG_DARK)
+frame_login.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+tk.Label(frame_login, text="🎮", font=("Segoe UI", 60), bg=BG_DARK).pack(pady=(80, 4))
+tk.Label(frame_login, text="GameZone", font=("Segoe UI", 36, "bold"),
+    bg=BG_DARK, fg=ACCENT).pack()
+tk.Label(frame_login, text="ใส่รหัสเพื่อเริ่มเล่น",
+    font=("Segoe UI", 15), bg=BG_DARK, fg=TEXT_SUB).pack(pady=(8, 36))
+
+e_code = tk.Entry(frame_login, font=("Courier New", 36, "bold"),
+    bg=BG_FIELD, fg=ACCENT, insertbackground=ACCENT,
+    relief="flat", width=10, justify="center",
+    highlightthickness=2, highlightcolor=ACCENT, highlightbackground=BG_FIELD)
+e_code.pack(ipady=14)
+e_code.focus()
+
+lbl_err = tk.Label(frame_login, text="", font=("Segoe UI", 13),
+    bg=BG_DARK, fg=RED)
+lbl_err.pack(pady=10)
+
+# ========== หน้าเล่น (Play) ==========
+frame_play = tk.Frame(main, bg=BG_DARK)
+
+lbl_welcome = tk.Label(frame_play, text="", font=("Segoe UI", 20, "bold"),
+    bg=BG_DARK, fg=GREEN)
+lbl_welcome.pack(pady=(50, 4))
+
+lbl_machine = tk.Label(frame_play, text="", font=("Segoe UI", 14),
+    bg=BG_DARK, fg=TEXT_SUB)
+lbl_machine.pack()
+
+tk.Label(frame_play, text="เวลาคงเหลือ", font=("Segoe UI", 14),
+    bg=BG_DARK, fg=TEXT_SUB).pack(pady=(40, 4))
+
+lbl_timer = tk.Label(frame_play, text="00:00:00", font=("Courier New", 80, "bold"),
+    bg=BG_DARK, fg=GREEN)
+lbl_timer.pack()
+
+lbl_total = tk.Label(frame_play, text="", font=("Segoe UI", 12),
+    bg=BG_DARK, fg=TEXT_SUB)
+lbl_total.pack(pady=4)
+
+progress = ttk.Progressbar(frame_play, style="bar.Horizontal.TProgressbar",
+    length=500, maximum=100)
+progress.pack(pady=14)
+
+lbl_status = tk.Label(frame_play, text="", font=("Segoe UI", 14, "bold"),
+    bg=BG_DARK, fg=TEXT)
+lbl_status.pack(pady=6)
+
+info_card = tk.Frame(frame_play, bg=BG_CARD, padx=24, pady=16)
+info_card.pack(padx=80, pady=10, fill="x")
+
+lbl_info_name  = tk.Label(info_card, text="", font=("Segoe UI", 13), bg=BG_CARD, fg=TEXT, anchor="w")
+lbl_info_phone = tk.Label(info_card, text="", font=("Segoe UI", 12), bg=BG_CARD, fg=TEXT_SUB, anchor="w")
+lbl_info_price = tk.Label(info_card, text="", font=("Segoe UI", 12), bg=BG_CARD, fg=ACCENT, anchor="w")
+lbl_info_start = tk.Label(info_card, text="", font=("Segoe UI", 11), bg=BG_CARD, fg=TEXT_SUB, anchor="w")
+for l in [lbl_info_name, lbl_info_phone, lbl_info_price, lbl_info_start]:
+    l.pack(fill="x", pady=2)
+
+# ==================== ฟังก์ชันหมดเวลา ====================
+def หมดเวลา():
+    running[0] = False
+    s = current["session"]
+    if s:
+        s["active"] = False
+        all_s = โหลด()
+        all_s[current["code"]] = s
+        บันทึก(all_s)
+    # กลับหน้าล็อก
+    root.after(0, กลับหน้าล็อก)
+
+def กลับหน้าล็อก():
+    frame_play.place_forget()
+    frame_login.place(relx=0, rely=0, relwidth=1, relheight=1)
+    e_code.delete(0, "end")
+    lbl_err.config(text="⛔ หมดเวลาแล้ว กรุณาติดต่อพนักงานเพื่อซื้อเวลาเพิ่ม", fg=RED)
+    e_code.focus()
+    current["code"] = None
+    current["session"] = None
+
+# ==================== นับถอยหลัง ====================
 def นับถอยหลัง():
     while running[0]:
         s = current["session"]
-        elapsed = time.time() - s["เริ่ม"]
+        if not s:
+            break
+        elapsed   = time.time() - s["เริ่ม"]
         remaining = s["นาที"] * 60 - elapsed
-        total = current["total_sec"]
-        pct = max(0, (remaining / total) * 100)
+        total     = current["total_sec"]
+        pct       = max(0, (remaining / total) * 100)
 
         if remaining <= 0:
-            running[0] = False
-            s["active"] = False
-            บันทึก(โหลด() | {current["code"]: s})
             root.after(0, lambda: lbl_timer.config(text="00:00:00", fg=RED))
-            root.after(0, lambda: lbl_status.config(text="⛔ หมดเวลา กรุณาติดต่อพนักงาน", fg=RED))
-            root.after(0, lambda: progress.config(value=0, style="red.Horizontal.TProgressbar"))
+            root.after(0, lambda: progress.config(value=0))
+            root.after(500, หมดเวลา)
             break
 
         h, rem = divmod(int(remaining), 3600)
-        m, sec = divmod(rem, 60)
-        time_str = f"{h:02d}:{m:02d}:{sec:02d}"
+        m, sec  = divmod(rem, 60)
+        ts = f"{h:02d}:{m:02d}:{sec:02d}"
 
         if remaining < 300:
             color = RED
-            style.configure("green.Horizontal.TProgressbar", background=RED)
+            style.configure("bar.Horizontal.TProgressbar", background=RED)
             root.after(0, lambda: lbl_status.config(text="⚠️ เหลือเวลาไม่ถึง 5 นาที!", fg=RED))
         elif remaining < 600:
             color = YELLOW
-            style.configure("green.Horizontal.TProgressbar", background=YELLOW)
+            style.configure("bar.Horizontal.TProgressbar", background=YELLOW)
             root.after(0, lambda: lbl_status.config(text="⏰ เหลือเวลาน้อยกว่า 10 นาที", fg=YELLOW))
         else:
             color = GREEN
+            style.configure("bar.Horizontal.TProgressbar", background=GREEN)
             root.after(0, lambda: lbl_status.config(text="✅ กำลังใช้งาน", fg=GREEN))
 
-        root.after(0, lambda t=time_str, c=color: lbl_timer.config(text=t, fg=c))
+        root.after(0, lambda t=ts, c=color: lbl_timer.config(text=t, fg=c))
         root.after(0, lambda p=pct: progress.config(value=p))
         time.sleep(1)
 
-def เริ่มเล่น():
+# ==================== เริ่มเล่น ====================
+def เริ่มเล่น(event=None):
     code = e_code.get().strip().upper()
     if not code:
-        lbl_err.config(text="กรุณาใส่รหัส")
+        lbl_err.config(text="กรุณาใส่รหัส", fg=RED)
         return
 
     sessions = โหลด()
     if code not in sessions:
-        lbl_err.config(text="❌ ไม่พบรหัสนี้ กรุณาติดต่อพนักงาน")
+        lbl_err.config(text="❌ ไม่พบรหัสนี้ กรุณาติดต่อพนักงาน", fg=RED)
         return
 
     s = sessions[code]
     if s.get("ใช้แล้ว"):
-        lbl_err.config(text="🔒 รหัสนี้ถูกใช้ไปแล้ว ขอรหัสใหม่จากพนักงาน")
+        lbl_err.config(text="🔒 รหัสนี้ถูกใช้ไปแล้ว ขอรหัสใหม่จากพนักงาน", fg=RED)
         return
     if s.get("active"):
-        lbl_err.config(text="⚠️ รหัสนี้กำลังใช้งานอยู่แล้ว")
+        lbl_err.config(text="⚠️ รหัสนี้กำลังใช้งานอยู่แล้ว", fg=YELLOW)
         return
 
-    # เริ่มเซสชัน
-    s["active"] = True
+    s["active"]  = True
     s["ใช้แล้ว"] = True
-    s["เริ่ม"] = time.time()
+    s["เริ่ม"]   = time.time()
     sessions[code] = s
     บันทึก(sessions)
 
-    current["code"] = code
-    current["session"] = s
+    current["code"]      = code
+    current["session"]   = s
     current["total_sec"] = s["นาที"] * 60
 
     h, m = divmod(s["นาที"], 60)
@@ -206,26 +260,23 @@ def เริ่มเล่น():
     lbl_welcome.config(text=f"ยินดีต้อนรับ {s['ชื่อ']} 🎮")
     lbl_machine.config(text=f"เครื่อง #{s['เครื่อง']}")
     lbl_info_name.config(text=f"👤 ชื่อ: {s['ชื่อ']}")
-    lbl_info_phone.config(text=f"📞 เบอร์: {s.get('เบอร์','-')}")
+    lbl_info_phone.config(text=f"📞 เบอร์: {s.get('เบอร์', '-')}")
     lbl_info_price.config(text=f"💰 ราคา: {s['ราคา']} บาท  |  เวลา: {t}")
     lbl_info_start.config(text=f"🕐 เริ่มเล่น: {datetime.now().strftime('%H:%M:%S')}")
     lbl_total.config(text=f"เวลาเช่าทั้งหมด {t}")
+    lbl_timer.config(fg=GREEN)
+    lbl_status.config(text="✅ กำลังใช้งาน", fg=GREEN)
+    progress.config(value=100)
 
-    btn_receipt.config(command=lambda: แสดงใบเสร็จ(code, s))
-
-    frame_login.pack_forget()
-    frame_play.pack(fill="both", expand=True)
+    frame_login.place_forget()
+    frame_play.place(relx=0, rely=0, relwidth=1, relheight=1)
 
     running[0] = True
     threading.Thread(target=นับถอยหลัง, daemon=True).start()
 
-btn_start = tk.Button(frame_login, text="🎮 เริ่มเล่น", font=("Segoe UI", 14, "bold"),
-    bg=ACCENT, fg=BG_DARK, relief="flat", padx=32, pady=12,
-    cursor="hand2", command=เริ่มเล่น)
-btn_start.pack(pady=4)
-e_code.bind("<Return>", lambda e: เริ่มเล่น())
-
-tk.Label(root, text="🖥️ GameZone - หน้าลูกค้า",
-    font=("Segoe UI", 9), bg=BG_DARK, fg=TEXT_SUB).pack(side="bottom", pady=5)
+tk.Button(frame_login, text="🎮 เริ่มเล่น", font=("Segoe UI", 16, "bold"),
+    bg=ACCENT, fg=BG_DARK, relief="flat", padx=36, pady=13,
+    cursor="hand2", command=เริ่มเล่น).pack(pady=4)
+e_code.bind("<Return>", เริ่มเล่น)
 
 root.mainloop()
