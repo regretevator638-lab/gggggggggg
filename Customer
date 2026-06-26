@@ -1,1 +1,231 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import time, json, os, threading
+from datetime import datetime
 
+DATA_FILE = "sessions.json"
+
+def โหลด():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def บันทึก(data):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+BG_DARK  = "#0d1117"
+BG_CARD  = "#161b22"
+BG_FIELD = "#21262d"
+ACCENT   = "#00d4aa"
+ACCENT2  = "#7c3aed"
+TEXT     = "#e6edf3"
+TEXT_SUB = "#8b949e"
+RED      = "#f85149"
+GREEN    = "#3fb950"
+YELLOW   = "#d29922"
+
+root = tk.Tk()
+root.title("🖥️ ลูกค้า - ใส่รหัสเพื่อเล่น")
+root.geometry("500x620")
+root.configure(bg=BG_DARK)
+root.resizable(False, False)
+
+# ==================== หน้าใส่รหัส ====================
+frame_login = tk.Frame(root, bg=BG_DARK)
+frame_login.pack(fill="both", expand=True)
+
+tk.Label(frame_login, text="🎮", font=("Segoe UI", 48), bg=BG_DARK).pack(pady=(50, 4))
+tk.Label(frame_login, text="GameZone", font=("Segoe UI", 28, "bold"),
+    bg=BG_DARK, fg=ACCENT).pack()
+tk.Label(frame_login, text="ใส่รหัสเพื่อเริ่มเล่น",
+    font=("Segoe UI", 13), bg=BG_DARK, fg=TEXT_SUB).pack(pady=(6, 30))
+
+e_code = tk.Entry(frame_login, font=("Courier New", 30, "bold"),
+    bg=BG_FIELD, fg=ACCENT, insertbackground=ACCENT,
+    relief="flat", width=10, justify="center",
+    highlightthickness=2, highlightcolor=ACCENT, highlightbackground=BG_FIELD)
+e_code.pack(ipady=12)
+e_code.focus()
+
+lbl_err = tk.Label(frame_login, text="", font=("Segoe UI", 11),
+    bg=BG_DARK, fg=RED)
+lbl_err.pack(pady=8)
+
+# ==================== หน้าเล่น ====================
+frame_play = tk.Frame(root, bg=BG_DARK)
+
+lbl_welcome = tk.Label(frame_play, text="", font=("Segoe UI", 16, "bold"),
+    bg=BG_DARK, fg=GREEN)
+lbl_welcome.pack(pady=(30, 4))
+
+lbl_machine = tk.Label(frame_play, text="", font=("Segoe UI", 13),
+    bg=BG_DARK, fg=TEXT_SUB)
+lbl_machine.pack()
+
+tk.Label(frame_play, text="เวลาคงเหลือ", font=("Segoe UI", 12),
+    bg=BG_DARK, fg=TEXT_SUB).pack(pady=(30, 4))
+
+lbl_timer = tk.Label(frame_play, text="00:00:00", font=("Courier New", 64, "bold"),
+    bg=BG_DARK, fg=GREEN)
+lbl_timer.pack()
+
+lbl_total = tk.Label(frame_play, text="", font=("Segoe UI", 11),
+    bg=BG_DARK, fg=TEXT_SUB)
+lbl_total.pack(pady=4)
+
+# Progress bar
+style = ttk.Style()
+style.theme_use("default")
+style.configure("green.Horizontal.TProgressbar", troughcolor=BG_CARD,
+    background=GREEN, thickness=12)
+progress = ttk.Progressbar(frame_play, style="green.Horizontal.TProgressbar",
+    length=340, maximum=100)
+progress.pack(pady=12)
+
+lbl_status = tk.Label(frame_play, text="", font=("Segoe UI", 12, "bold"),
+    bg=BG_DARK, fg=TEXT)
+lbl_status.pack(pady=6)
+
+# กล่องข้อมูลลูกค้า
+info_card = tk.Frame(frame_play, bg=BG_CARD, padx=20, pady=14)
+info_card.pack(padx=40, pady=10, fill="x")
+
+lbl_info_name  = tk.Label(info_card, text="", font=("Segoe UI", 11), bg=BG_CARD, fg=TEXT, anchor="w")
+lbl_info_phone = tk.Label(info_card, text="", font=("Segoe UI", 11), bg=BG_CARD, fg=TEXT_SUB, anchor="w")
+lbl_info_price = tk.Label(info_card, text="", font=("Segoe UI", 11), bg=BG_CARD, fg=ACCENT, anchor="w")
+lbl_info_start = tk.Label(info_card, text="", font=("Segoe UI", 10), bg=BG_CARD, fg=TEXT_SUB, anchor="w")
+for l in [lbl_info_name, lbl_info_phone, lbl_info_price, lbl_info_start]:
+    l.pack(fill="x", pady=1)
+
+# ปุ่มใบเสร็จ
+def แสดงใบเสร็จ(code, s):
+    h, m = divmod(s["นาที"], 60)
+    t = f"{h}ชม {m}น" if h else f"{m}น"
+    receipt = f"""
+╔══════════════════════════════╗
+║       🎮 ร้านเกม GameZone      ║
+╠══════════════════════════════╣
+║ วันที่    : {s['สร้างเมื่อ']:<18} ║
+║ ชื่อ      : {s['ชื่อ']:<18} ║
+║ เบอร์     : {s.get('เบอร์','-'):<18} ║
+║ เครื่อง   : เครื่อง {s['เครื่อง']:<13} ║
+║ เวลาเช่า  : {t:<18} ║
+║ รหัส      : {code:<18} ║
+║ ราคา      : {s['ราคา']} บาท{'':<13} ║
+╠══════════════════════════════╣
+║     ขอบคุณที่ใช้บริการครับ     ║
+╚══════════════════════════════╝
+"""
+    win = tk.Toplevel(root)
+    win.title("ใบเสร็จ")
+    win.configure(bg=BG_DARK)
+    win.geometry("360x340")
+    tk.Label(win, text=receipt, font=("Courier New", 10), bg=BG_DARK,
+        fg=ACCENT, justify="left").pack(padx=10, pady=10)
+
+btn_receipt = tk.Button(frame_play, text="🧾 ดูใบเสร็จ", font=("Segoe UI", 11),
+    bg=BG_FIELD, fg=ACCENT, relief="flat", padx=16, pady=7, cursor="hand2")
+btn_receipt.pack(pady=4)
+
+# ==================== ตัวแปร ====================
+current = {"code": None, "session": None, "total_sec": 0}
+running = [False]
+
+def นับถอยหลัง():
+    while running[0]:
+        s = current["session"]
+        elapsed = time.time() - s["เริ่ม"]
+        remaining = s["นาที"] * 60 - elapsed
+        total = current["total_sec"]
+        pct = max(0, (remaining / total) * 100)
+
+        if remaining <= 0:
+            running[0] = False
+            s["active"] = False
+            บันทึก(โหลด() | {current["code"]: s})
+            root.after(0, lambda: lbl_timer.config(text="00:00:00", fg=RED))
+            root.after(0, lambda: lbl_status.config(text="⛔ หมดเวลา กรุณาติดต่อพนักงาน", fg=RED))
+            root.after(0, lambda: progress.config(value=0, style="red.Horizontal.TProgressbar"))
+            break
+
+        h, rem = divmod(int(remaining), 3600)
+        m, sec = divmod(rem, 60)
+        time_str = f"{h:02d}:{m:02d}:{sec:02d}"
+
+        if remaining < 300:
+            color = RED
+            style.configure("green.Horizontal.TProgressbar", background=RED)
+            root.after(0, lambda: lbl_status.config(text="⚠️ เหลือเวลาไม่ถึง 5 นาที!", fg=RED))
+        elif remaining < 600:
+            color = YELLOW
+            style.configure("green.Horizontal.TProgressbar", background=YELLOW)
+            root.after(0, lambda: lbl_status.config(text="⏰ เหลือเวลาน้อยกว่า 10 นาที", fg=YELLOW))
+        else:
+            color = GREEN
+            root.after(0, lambda: lbl_status.config(text="✅ กำลังใช้งาน", fg=GREEN))
+
+        root.after(0, lambda t=time_str, c=color: lbl_timer.config(text=t, fg=c))
+        root.after(0, lambda p=pct: progress.config(value=p))
+        time.sleep(1)
+
+def เริ่มเล่น():
+    code = e_code.get().strip().upper()
+    if not code:
+        lbl_err.config(text="กรุณาใส่รหัส")
+        return
+
+    sessions = โหลด()
+    if code not in sessions:
+        lbl_err.config(text="❌ ไม่พบรหัสนี้ กรุณาติดต่อพนักงาน")
+        return
+
+    s = sessions[code]
+    if s.get("ใช้แล้ว"):
+        lbl_err.config(text="🔒 รหัสนี้ถูกใช้ไปแล้ว ขอรหัสใหม่จากพนักงาน")
+        return
+    if s.get("active"):
+        lbl_err.config(text="⚠️ รหัสนี้กำลังใช้งานอยู่แล้ว")
+        return
+
+    # เริ่มเซสชัน
+    s["active"] = True
+    s["ใช้แล้ว"] = True
+    s["เริ่ม"] = time.time()
+    sessions[code] = s
+    บันทึก(sessions)
+
+    current["code"] = code
+    current["session"] = s
+    current["total_sec"] = s["นาที"] * 60
+
+    h, m = divmod(s["นาที"], 60)
+    t = f"{h}ชม {m}น" if h else f"{m}น"
+
+    lbl_welcome.config(text=f"ยินดีต้อนรับ {s['ชื่อ']} 🎮")
+    lbl_machine.config(text=f"เครื่อง #{s['เครื่อง']}")
+    lbl_info_name.config(text=f"👤 ชื่อ: {s['ชื่อ']}")
+    lbl_info_phone.config(text=f"📞 เบอร์: {s.get('เบอร์','-')}")
+    lbl_info_price.config(text=f"💰 ราคา: {s['ราคา']} บาท  |  เวลา: {t}")
+    lbl_info_start.config(text=f"🕐 เริ่มเล่น: {datetime.now().strftime('%H:%M:%S')}")
+    lbl_total.config(text=f"เวลาเช่าทั้งหมด {t}")
+
+    btn_receipt.config(command=lambda: แสดงใบเสร็จ(code, s))
+
+    frame_login.pack_forget()
+    frame_play.pack(fill="both", expand=True)
+
+    running[0] = True
+    threading.Thread(target=นับถอยหลัง, daemon=True).start()
+
+btn_start = tk.Button(frame_login, text="🎮 เริ่มเล่น", font=("Segoe UI", 14, "bold"),
+    bg=ACCENT, fg=BG_DARK, relief="flat", padx=32, pady=12,
+    cursor="hand2", command=เริ่มเล่น)
+btn_start.pack(pady=4)
+e_code.bind("<Return>", lambda e: เริ่มเล่น())
+
+tk.Label(root, text="🖥️ GameZone - หน้าลูกค้า",
+    font=("Segoe UI", 9), bg=BG_DARK, fg=TEXT_SUB).pack(side="bottom", pady=5)
+
+root.mainloop()
