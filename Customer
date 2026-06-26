@@ -5,6 +5,7 @@ from datetime import datetime
 
 DATA_FILE = "sessions.json"
 ADMIN_PASSWORD = "ADMIN99"  # รหัสลับสำหรับปิดโปรแกรม (เปลี่ยนได้)
+MACHINE_ID = "1"  # ← เปลี่ยนตรงนี้ให้ตรงกับหมายเลขเครื่องนี้
 
 def โหลด():
     if os.path.exists(DATA_FILE):
@@ -236,6 +237,9 @@ def เริ่มเล่น(event=None):
         return
     if s.get("active"):
         lbl_err.config(text="⚠️ รหัสนี้กำลังใช้งานอยู่แล้ว", fg=YELLOW)
+        return
+    if str(s.get("เครื่อง", "")) != str(MACHINE_ID):
+        lbl_err.config(text=f"❌ รหัสนี้ไม่ใช่สำหรับเครื่องนี้ (เครื่อง {s.get('เครื่อง')})", fg=RED)
         return
 
     s["active"]  = True
