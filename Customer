@@ -269,4 +269,8 @@ tk.Button(frame_login, text="🎮 เริ่มเล่น", font=("Segoe UI"
 e_code.bind("<Return>", เริ่มเล่น)
 frame_login.bind("<Button-1>", คลิกปุ่มลับ)
 
+# คำสั่งลัด Ctrl+Alt+Q สำหรับปิดโปรแกรม
+root.bind("<Control-Alt-q>", lambda e: แสดงหน้าต่างรหัสลับ())
+root.bind("<Control-Alt-Q>", lambda e: แสดงหน้าต่างรหัสลับ())
+
 root.mainloop()
