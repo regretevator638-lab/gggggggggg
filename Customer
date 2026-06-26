@@ -35,11 +35,9 @@ root.attributes("-fullscreen", True)
 root.attributes("-topmost", True)
 root.configure(bg=BG_DARK)
 
-# บล็อก Alt+F4
+# บล็อกแค่ปุ่มปิดหน้าต่าง (X) เท่านั้น
+# Ctrl+Alt+Delete และ Task Manager ยังใช้ได้ตามปกติ
 root.protocol("WM_DELETE_WINDOW", lambda: None)
-# บล็อก Alt+Tab, Windows key, Escape
-for key in ["<Alt-F4>", "<Alt-Tab>", "<Super_L>", "<Super_R>", "<Escape>"]:
-    root.bind(key, lambda e: "break")
 
 style = ttk.Style()
 style.theme_use("default")
@@ -99,9 +97,10 @@ running = [False]
 main = tk.Frame(root, bg=BG_DARK)
 main.place(relx=0, rely=0, relwidth=1, relheight=1)
 
-# ปุ่มล่องหน มุมบนซ้าย (คลิก 3 ครั้งเร็วๆ)
-btn_secret = tk.Label(main, text="", bg=BG_DARK, width=3, height=1, cursor="arrow")
-btn_secret.place(x=0, y=0)
+# ปุ่มลับ มุมล่างขวา (จุดเล็กๆ คลิก 3 ครั้งเร็วๆ)
+btn_secret = tk.Label(main, text="●", font=("Segoe UI", 8),
+    bg=BG_DARK, fg="#2a2a3a", cursor="arrow")
+btn_secret.place(relx=1.0, rely=1.0, anchor="se", x=-8, y=-8)
 btn_secret.bind("<Button-1>", คลิกปุ่มลับ)
 
 # ========== หน้าล็อก (Login) ==========
